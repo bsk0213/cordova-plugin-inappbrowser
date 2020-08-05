@@ -47,6 +47,7 @@
 
 @implementation CDVWKInAppBrowser
 
+BOOL _iabIsHidden = NO;
 static CDVWKInAppBrowser* instance = nil;
 
 + (id) getInstance{
@@ -73,6 +74,7 @@ static CDVWKInAppBrowser* instance = nil;
         NSLog(@"IAB.close() called but it was already closed.");
         return;
     }
+    _iabIsHidden = NO; //Custom Dev
     
     // Things are cleaned up in browserExit.
     [self.inAppBrowserViewController close];
@@ -86,7 +88,37 @@ static CDVWKInAppBrowser* instance = nil;
     
     return NO;
 }
+//Custom Dev - Resize - Start
+-(void)resizeiab:(CDVInvokedUrlCommand *)command
+{
+    NSString* options = [command argumentAtIndex:0 withDefault:@"" andClass:[NSString class]];
+    [self performResize:options];
+}
 
+-(void)performResize:(NSString*)options
+{
+    CDVInAppBrowserOptions* browserOptions = [CDVInAppBrowserOptions parseOptions:options];
+
+    if (self.inAppBrowserViewController == nil) {
+        NSLog(@"Tried to hide IAB after it was closed.");
+        return;
+        
+    }
+    if (_previousStatusBarStyle == -1) {
+        NSLog(@"Tried to hide IAB while already hidden");
+        return;
+    }
+    
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        //    _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
+        self->tmpWindow.frame = CGRectMake(browserOptions.top.floatValue, browserOptions.left.floatValue, browserOptions.width.floatValue, browserOptions.height.floatValue);
+    });
+    
+
+
+}
+//Custom Dev - Resize - End
 - (void)open:(CDVInvokedUrlCommand*)command
 {
     CDVPluginResult* pluginResult;
@@ -257,19 +289,37 @@ static CDVWKInAppBrowser* instance = nil;
     
     [self.inAppBrowserViewController navigateTo:url];
     if (!browserOptions.hidden) {
-        [self show:nil withNoAnimate:browserOptions.hidden];
+             //Custom Dev - Resize - Start
+               [self show:nil withNoAnimate:browserOptions.hidden allOptions:browserOptions];
+        //          [self show:nil withNoAnimate:browserOptions.hidden];
+             //Custom Dev - Resize - End
     }
 }
 
 - (void)show:(CDVInvokedUrlCommand*)command{
-    [self show:command withNoAnimate:NO];
+    //Custom Dev - Resize - Start
+//    [self show:command withNoAnimate:NO];
+      [self show:command withNoAnimate:NO allOptions:nil];
+    //Custom Dev - Resize - End
 }
-
-- (void)show:(CDVInvokedUrlCommand*)command withNoAnimate:(BOOL)noAnimate
+//Custom Dev - Resize - Start
+// - (void)show:(CDVInvokedUrlCommand*)command withNoAnimate:(BOOL)noAnimate
+- (void)show:(CDVInvokedUrlCommand*)command withNoAnimate:(BOOL)noAnimate allOptions:(CDVInAppBrowserOptions *)allOptions
 {
     BOOL initHidden = NO;
     if(command == nil && noAnimate == YES){
         initHidden = YES;
+    }
+    
+    //Custom Dev - Error handling
+    CDVPluginResult* pluginResult = nil;
+    
+    if(allOptions == nil){
+        NSLog(@"Window screen dimensions not defined");
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Arg was null"];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //Custom Dev - Error handling - end
+        return;
     }
     
     if (self.inAppBrowserViewController == nil) {
@@ -277,7 +327,11 @@ static CDVWKInAppBrowser* instance = nil;
         return;
     }
     if (_previousStatusBarStyle != -1) {
+        //Custom Dev - Error handling - start
         NSLog(@"Tried to show IAB while already shown");
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Arg was null"];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //Custom Dev - Error handling - end
         return;
     }
     
@@ -294,28 +348,62 @@ static CDVWKInAppBrowser* instance = nil;
     
     __weak CDVWKInAppBrowser* weakSelf = self;
     
-    // Run later to avoid the "took a long time" log message.
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (weakSelf.inAppBrowserViewController != nil) {
-            float osVersion = [[[UIDevice currentDevice] systemVersion] floatValue];
-            __strong __typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf->tmpWindow) {
-                CGRect frame = [[UIScreen mainScreen] bounds];
-                if(initHidden && osVersion < 11){
-                   frame.origin.x = -10000;
-                }
-                strongSelf->tmpWindow = [[UIWindow alloc] initWithFrame:frame];
-            }
-            UIViewController *tmpController = [[UIViewController alloc] init];
-            [strongSelf->tmpWindow setRootViewController:tmpController];
-            [strongSelf->tmpWindow setWindowLevel:UIWindowLevelNormal];
 
-            if(!initHidden || osVersion < 11){
-                [self->tmpWindow makeKeyAndVisible];
+    //Custom Dev - Resize - Start
+         noAnimate = YES;
+ 
+    //Custom Dev - Resize - End
+
+        // Run later to avoid the "took a long time" log message.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (weakSelf.inAppBrowserViewController != nil) {
+                float osVersion = [[[UIDevice currentDevice] systemVersion] floatValue];
+                __strong __typeof(weakSelf) strongSelf = weakSelf;
+
+
+    //Custom Dev - Resize - Start
+    //             if (!strongSelf->tmpWindow && _iabIsHidden == NO) {
+                if (_iabIsHidden == NO) {
+                CGRect frame = CGRectMake(allOptions.left.floatValue, allOptions.top.floatValue, allOptions.width.floatValue, allOptions.height.floatValue);
+                    strongSelf->tmpWindow = [[UIWindow alloc] initWithFrame:frame];
+                     
+                 }
+    //Custom Dev - Resize - End
+                    
+                UIViewController *tmpController = [[UIViewController alloc] init];
+
+                [strongSelf->tmpWindow setRootViewController:tmpController];
+                [strongSelf->tmpWindow setWindowLevel:UIWindowLevelNormal];
+
+                if(!initHidden || osVersion < 11){
+                    [self->tmpWindow makeKeyAndVisible];
+                }
+                [tmpController presentViewController:nav animated:!noAnimate completion:nil];
             }
-            [tmpController presentViewController:nav animated:!noAnimate completion:nil];
-        }
-    });
+        });
+    
+//    // Run later to avoid the "took a long time" log message.
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//        if (weakSelf.inAppBrowserViewController != nil) {
+//            float osVersion = [[[UIDevice currentDevice] systemVersion] floatValue];
+//            __strong __typeof(weakSelf) strongSelf = weakSelf;
+//            if (!strongSelf->tmpWindow) {
+//                CGRect frame = CGRectMake(100, 100, 500, 500);//[[UIScreen mainScreen] bounds];//
+//                if(initHidden && osVersion < 11){
+//                   frame.origin.x = -10000;
+//                }
+//                strongSelf->tmpWindow = [[UIWindow alloc] initWithFrame:frame];
+//            }
+//            UIViewController *tmpController = [[UIViewController alloc] init];
+//            [strongSelf->tmpWindow setRootViewController:tmpController];
+//            [strongSelf->tmpWindow setWindowLevel:UIWindowLevelNormal];
+//
+//            if(!initHidden || osVersion < 11){
+//                [self->tmpWindow makeKeyAndVisible];
+//            }
+//            [tmpController presentViewController:nav animated:!noAnimate completion:nil];
+//        }
+//    });
 }
 
 - (void)hide:(CDVInvokedUrlCommand*)command
@@ -324,7 +412,8 @@ static CDVWKInAppBrowser* instance = nil;
     // https://stackoverflow.com/questions/4544489/how-to-remove-a-uiwindow
     self->tmpWindow.hidden = YES;
     self->tmpWindow = nil;
-
+    _iabIsHidden = YES; //Custom Dev
+    
     if (self.inAppBrowserViewController == nil) {
         NSLog(@"Tried to hide IAB after it was closed.");
         return;
@@ -1071,11 +1160,12 @@ BOOL isExiting = FALSE;
     // Run later to avoid the "took a long time" log message.
     dispatch_async(dispatch_get_main_queue(), ^{
         isExiting = TRUE;
-        lastReducedStatusBarHeight = 0.0;
         if ([weakSelf respondsToSelector:@selector(presentingViewController)]) {
-            [[weakSelf presentingViewController] dismissViewControllerAnimated:YES completion:nil];
+            //Custom Dev - Start
+            [[weakSelf presentingViewController] dismissViewControllerAnimated:NO completion:nil];
         } else {
-            [[weakSelf parentViewController] dismissViewControllerAnimated:YES completion:nil];
+            [[weakSelf parentViewController] dismissViewControllerAnimated:NO completion:nil];
+            //Custom Dev - End
         }
     });
 }
@@ -1103,7 +1193,7 @@ BOOL isExiting = FALSE;
 - (void)viewWillAppear:(BOOL)animated
 {
     [self rePositionViews];
-    
+
     [super viewWillAppear:animated];
 }
 
@@ -1256,12 +1346,8 @@ BOOL isExiting = FALSE;
     }];
 
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+   
 }
 
-#pragma mark UIAdaptivePresentationControllerDelegate
-
-- (void)presentationControllerWillDismiss:(UIPresentationController *)presentationController {
-    isExiting = TRUE;
-}
 
 @end //CDVWKInAppBrowserViewController
