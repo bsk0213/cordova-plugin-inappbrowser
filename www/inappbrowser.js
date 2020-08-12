@@ -54,9 +54,11 @@
         close: function (eventname) {
             exec(null, null, 'InAppBrowser', 'close', []);
         },
-        show: function (eventname) {
-            exec(null, null, 'InAppBrowser', 'show', []);
+        //Custom Dev - Start
+        show: function (eventname,strWindowFeatures) {
+            exec(null, null, 'InAppBrowser', 'show', [strWindowFeatures]);
         },
+        //Custom Dev - End
         hide: function (eventname) {
             exec(null, null, 'InAppBrowser', 'hide', []);
         },
