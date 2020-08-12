@@ -46,8 +46,9 @@
 @end
 
 @implementation CDVWKInAppBrowser
-
+//Custom Dev -Start
 BOOL _iabIsHidden = NO;
+//Custom Dev -End
 static CDVWKInAppBrowser* instance = nil;
 
 + (id) getInstance{
@@ -110,10 +111,10 @@ static CDVWKInAppBrowser* instance = nil;
     }
     
     
-    dispatch_async(dispatch_get_main_queue(), ^{
+//    dispatch_async(dispatch_get_main_queue(), ^{
         //    _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
         self->tmpWindow.frame = CGRectMake(browserOptions.top.floatValue, browserOptions.left.floatValue, browserOptions.width.floatValue, browserOptions.height.floatValue);
-    });
+//    });
     
 
 
@@ -298,8 +299,13 @@ static CDVWKInAppBrowser* instance = nil;
 
 - (void)show:(CDVInvokedUrlCommand*)command{
     //Custom Dev - Resize - Start
+    
+       NSString* showoptions = [command argumentAtIndex:0 withDefault:@"" andClass:[NSString class]];
+        
+    _iabIsHidden = NO;
+     CDVInAppBrowserOptions* browserOptions = [CDVInAppBrowserOptions parseOptions:showoptions];
 //    [self show:command withNoAnimate:NO];
-      [self show:command withNoAnimate:NO allOptions:nil];
+      [self show:command withNoAnimate:NO allOptions:browserOptions];
     //Custom Dev - Resize - End
 }
 //Custom Dev - Resize - Start
@@ -311,7 +317,7 @@ static CDVWKInAppBrowser* instance = nil;
         initHidden = YES;
     }
     
-    //Custom Dev - Error handling
+    //Custom Dev - Error handling - Start
     CDVPluginResult* pluginResult = nil;
     
     if(allOptions == nil){
