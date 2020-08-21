@@ -113,7 +113,7 @@ static CDVWKInAppBrowser* instance = nil;
     
 //    dispatch_async(dispatch_get_main_queue(), ^{
         //    _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
-        self->tmpWindow.frame = CGRectMake(browserOptions.top.floatValue, browserOptions.left.floatValue, browserOptions.width.floatValue, browserOptions.height.floatValue);
+        self->tmpWindow.frame = CGRectMake(browserOptions.left.floatValue, browserOptions.top.floatValue, browserOptions.width.floatValue, browserOptions.height.floatValue);
 //    });
     
 
